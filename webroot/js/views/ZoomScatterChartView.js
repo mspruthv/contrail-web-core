@@ -1356,7 +1356,9 @@ define([
             doBucketize : chartOptions['doBucketize'],
             bubbleSizeFn: chartOptions['bubbleSizeFn'],
             defaultDataStatusMessage: true,
-            statusMessageHandler: cowm.getRequestMessage
+            statusMessageHandler: cowm.getRequestMessage,
+            //FIX FOR THE BUG https://bugs.launchpad.net/juniperopenstack/+bug/1597347 
+            bubbleDefMaxValue: getValueByJsonPath(chartOptions,'bubbleCfg;defaultMaxValue', 0) 
         };
 
         return chartViewConfig;

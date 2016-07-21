@@ -386,22 +386,34 @@ define([
         var sizeMinMax = d3.extent(values, function (obj) {
             return  contrail.handleIfNaN(obj[sizeFieldName], 0)
         });
-        if (sizeMinMax[0] == sizeMinMax[1]) {
-            sizeMinMax = [sizeMinMax[0] * .9, sizeMinMax[0] * 1.1];
-        } else {
-            sizeMinMax = [sizeMinMax[0], sizeMinMax[1]];
-            if(chartConfig['doBucketize'] == true) {
-                //Ensure that Max is atleast 4 times Min
-                // && Min value should not be 0 for this calculation.
-                var validMinSize = sizeMinMax[0];
-                if (validMinSize == 0) {
-                    sortedValues = _.sortBy(values, 'size').filter(function (obj) {return obj[sizeFieldName] > 0});
-                    validMinSize = sortedValues[0] != null ? (sortedValues[0]['size'] != null ? sortedValues[0]['size'] : 0) :0;
-                }
-                if((validMinSize * 4) > sizeMinMax[1])
-                    sizeMinMax[1] = validMinSize * 4;
+        /**
+         * FIX FOR THE BUG https://bugs.launchpad.net/juniperopenstack/+bug/1597347 
+         */
+
+        if(chartConfig.bubbleDefMaxValue > 0){
+            sizeMinMax[0] = 0;
+            //if sizeMinMax[1] < 10 GBPS sizeMinMax[1] = 10 GBPS
+            if(sizeMinMax[1] <= chartConfig.bubbleDefMaxValue){
+                sizeMinMax[1] = chartConfig.bubbleDefMaxValue;
             }
-        }
+        }else{
+            if (sizeMinMax[0] == sizeMinMax[1]) {
+                sizeMinMax = [sizeMinMax[0] * .9, sizeMinMax[0] * 1.1];
+            } else {
+                sizeMinMax = [sizeMinMax[0], sizeMinMax[1]];
+                if(chartConfig['doBucketize'] == true) {
+                    //Ensure that Max is atleast 4 times Min
+                    // && Min value should not be 0 for this calculation.
+                    var validMinSize = sizeMinMax[0];
+                    if (validMinSize == 0) {
+                        sortedValues = _.sortBy(values, 'size').filter(function (obj) {return obj[sizeFieldName] > 0});
+                        validMinSize = sortedValues[0] != null ? (sortedValues[0]['size'] != null ? sortedValues[0]['size'] : 0) :0;
+                    }
+                    if((validMinSize * 4) > sizeMinMax[1])
+                        sizeMinMax[1] = validMinSize * 4;
+                }
+            }
+        }        
         return sizeMinMax;
     }
 
