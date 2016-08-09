@@ -13,10 +13,9 @@ define(['underscore'], function (_) {
         if(this.getAlarmsFromAnalytics) {
             // sevLevels = cowc.SEV_LEVELS;
             sevLevels = {
-                ERROR   : 3, //Red
-                WARNING : 4, //Orange
-                // NOTICE  : 2, //Blue
-                // INFO    : 3, //Green
+                CRITICAL : 0, //Red
+                ERROR    : 1, //Red
+                WARNING  : 2 //Orange
             };
         }
         this.renderGrid = function (elementId, gridConfig) {
@@ -508,8 +507,21 @@ define(['underscore'], function (_) {
             return attribute;
         };
 
-        /* Detail Template Generator*/
+        this.checkAndRefreshContrailGrids = function(elements) {
+            if (_.isArray(elements)) {
+                _.each(elements, function(elementKey, elementValue) {
+                    if (contrail.checkIfExist($(elementValue).data('contrailGrid'))) {
+                        $(elementValue).data('contrailGrid').refreshView();
+                    }
+                });
+            } else {
+                if (contrail.checkIfExist($(elements).data('contrailGrid'))) {
+                    $(elements).data('contrailGrid').refreshView();
+                }
+            }
+        };
 
+        /* Detail Template Generator*/
         this.generateBlockListTemplate = function (config, app, parentConfig) {
             var template = '' +
                 '{{#IfCompare requestState "' + cowc.DATA_REQUEST_STATE_SUCCESS_NOT_EMPTY + '" operator="!==" }}' +
@@ -1196,6 +1208,30 @@ define(['underscore'], function (_) {
             }
             return json;
         };
+
+        this.numberFormatter = function(number, decimals) {
+            var units = ['', 'K', 'M', 'B', 'T'],
+            unit = units.length - 1,
+            kilo = 1000,
+            decimals = isNaN(decimals) ? 2 : Math.abs(decimals),
+            decPoint = '.';
+            for (var i=0; i < units.length; i++) {
+              if (number < Math.pow(kilo, i+1)) {
+                unit = i;
+                break;
+              }
+            }
+            number = number / Math.pow(kilo, unit);
+            var suffix = units[unit] ;
+            var sign = number < 0 ? '-' : '';
+            number = Math.abs(+number || 0);
+            var intPart = parseInt(number.toFixed(decimals), 10) + '';
+            if (Math.abs(number - intPart) > 0)
+                return sign + intPart + (decimals ? decPoint + Math.abs(number - intPart).toFixed(decimals).slice(2) : '') + " "+suffix;
+            else
+                return sign + intPart +" "+suffix;
+        };
+
     };
 
     function filterXML(xmlString, is4SystemLogs) {

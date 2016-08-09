@@ -79,7 +79,22 @@ function doSendApiServerRespToApp (error, data, obj, appData, callback)
             return;
         }
     }
-
+    var multiTenancyEnabled = commonUtils.isMultiTenancyEnabled();
+    if (null != error) {
+        if (global.HTTP_STATUS_AUTHORIZATION_FAILURE ==
+            error.responseCode) {
+            if (true == multiTenancyEnabled) {
+                try {
+                    commonUtils.redirectToLogoutByAppData(appData);
+                } catch(e) {
+                    console.log("OpServer: redirectToLogout failed:" + e);
+                }
+                return;
+            }
+        }
+        callback(error, data);
+        return;
+    }
     callback(error, data);
 }
 

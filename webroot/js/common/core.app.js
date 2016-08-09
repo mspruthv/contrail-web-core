@@ -65,6 +65,7 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
 
         'query-form-view'             : coreWebDir + '/js/views/QueryFormView',
         'contrail-vis-view'           : coreWebDir + '/js/views/ContrailVisView',
+        'contrail-config-model'       : coreWebDir + '/js/models/ContrailConfigModel',
 
         'query-form-model'            : coreWebDir + '/js/models/QueryFormModel',
         'query-or-model'              : coreWebDir + '/js/models/QueryOrModel',
@@ -79,8 +80,8 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
         'server-schema'               : coreWebDir + '/schemas/server.schema',
         'cluster-schema'              : coreWebDir + '/schemas/cluster.schema',
         'json-model'                  : coreWebDir + "/js/models/JsonModel",
-        'json-edit-view'              : coreWebDir + '/js/views/JsonEditView'
-
+        'json-edit-view'              : coreWebDir + '/js/views/JsonEditView',
+        'iframe-view'                 : coreWebDir + '/js/views/IframeView'
     };
 
     //Separate out aliases that need to be there for both prod & dev environments
@@ -102,11 +103,11 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
             'contrail-view-model'         : coreWebDir + '/js/models/ContrailViewModel',
             'contrail-list-model'         : coreWebDir + '/js/models/ContrailListModel',
             'lodash'                      : coreWebDir + '/assets/lodash/lodash.min',
-            'crossfilter'               : coreWebDir + '/assets/crossfilter/js/crossfilter',
+            'crossfilter'                 : coreWebDir + '/assets/crossfilter/js/crossfilter',
             'backbone'                    : coreWebDir + '/assets/backbone/backbone-min',
             'text'                        : coreWebDir + '/assets/requirejs/text',
             'knockout'                    : coreWebDir + '/assets/knockout/knockout-3.0.0',
-            'moment'                    : coreWebDir + "/assets/moment/moment",
+            'moment'                      : coreWebDir + "/assets/moment/moment",
             'layout-handler'              : coreWebDir + '/js/handlers/LayoutHandler',
             'menu-handler'                : coreWebDir + '/js/handlers/MenuHandler',
             'content-handler'             : coreWebDir + '/js/handlers/ContentHandler',
@@ -187,6 +188,10 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
     } else if(env == "prod") {
         var prodAliasMap = {
             'controller-basedir'          : coreBaseDir,
+            'backbone'                    : coreWebDir + '/assets/backbone/backbone-min',
+            'knockout'                    : coreWebDir + '/assets/knockout/knockout-3.0.0',
+            'knockback'                 : coreWebDir + '/assets/backbone/knockback.min',
+            'validation'                  : coreWebDir + '/assets/backbone/backbone-validation-amd'
         }
         //Merge common (for both prod & dev) alias 
         for(var currAlias in prodAliasMap)
@@ -398,8 +403,6 @@ var coreBundles = {
             'sprintf',
             'ipv6',
             'xdate',
-            'knockback',
-            'validation',
         ],
         'jquery-dep-libs': [
             'jquery.xml2json',
@@ -443,9 +446,7 @@ var coreBundles = {
             'contrail-list-model',
             'lodash',
             'crossfilter',
-            'backbone',
             'text',
-            'knockout',
             'moment',
             'layout-handler',
             'menu-handler',
@@ -509,6 +510,20 @@ var coreBundles = {
             'core-basedir/js/views/SparklineView',
             'core-basedir/js/views/TabsView',
             'core-basedir/js/views/WizardView'
+        ],
+        'nonamd-libs': [
+            'web-utils',
+            'analyzer-utils',
+            'config_global',
+            'contrail-layout',
+            'handlebars-utils',
+            'contrail-common',
+            'uuid',
+            'protocol',
+            'xdate',
+            'ipv6',
+            'handlebars',
+            'jsonpath'
         ]
     };
 
@@ -520,7 +535,6 @@ function initBackboneValidation() {
                 /*
                 var $el = $(view.modalElementId).find('[name=' + attr + ']'),
                 $group = $el.closest('.form-element');
-
                 $group.removeClass('has-error');
                 $group.find('.help-block').html('').addClass('hidden');
                 */
@@ -891,6 +905,20 @@ function initCustomKOBindings(Knockout) {
     });
 };
 
+function loadGohanUI() {
+    sessionStorage.setItem('gohan_contrail',true);
+    sessionStorage.setItem('tenant',JSON.stringify(loadUtils.getCookie('project')));
+    $('#alarms-popup-link').hide();
+    $('#nav-search').hide();
+    require(['iframe-view'],function(IframeView) {
+        var iframeView = new IframeView({
+            el:$("#main-container"),
+            url:"./gohan.html"
+        });
+        iframeView.render();
+    });
+};
+
 function changeRegion (e)
 {
     var oldRegion = contrail.getCookie('region');
@@ -898,6 +926,12 @@ function changeRegion (e)
     if ((null != region) && (oldRegion != region) &&
         ('null' != region) && ('undefined' != region)) {
         contrail.setCookie('region', region);
+        if(region == "All Regions") {
+            //To indicate that gohanUI is being embedded in contrailUI
+            sessionStorage.setItem('gohan_contrail',true);
+            loadGohanUI();
+            return;
+        }
         /* And issue logout request */
         loadUtils.logout()
     }
@@ -1019,12 +1053,14 @@ if (typeof document !== 'undefined' && document) {
         }
 
         $.when.apply(window, featureAppDefObjList).done(function () {
-            globalObj['featureAppDefObj'].resolve();
+            //Ensure d3 and nv.d3 are available before loading any particular feature
+            //d3 and nv.d3 are not necessary for loading menu and layout
+            require(['chart-utils'],function() {
+                globalObj['featureAppDefObj'].resolve();
+            });
         });
     };
 
-    require(['core-bundle','nonamd-libs'],function() {
-    });
     function loadAjaxRequest(ajaxCfg,callback) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET',ajaxCfg['url']);
@@ -1090,7 +1126,7 @@ if (typeof document !== 'undefined' && document) {
                     globalObj['webServerInfo'] = loadUtils.parseWebServerInfo(response);
 
                     //For Region drop-down
-                    require(['jquery', 'jquery-dep-libs'], function() {
+                    require(['jquery', 'jquery-dep-libs','nonamd-libs'], function() {
                         var regionList =
                             globalObj.webServerInfo.regionList;
                         var cnt = 0;
@@ -1109,7 +1145,23 @@ if (typeof document !== 'undefined' && document) {
                                                             width: '100px',
                                                             change: changeRegion});
                             $('#regionDD').data("contrailDropdown").setData(ddRegionList);
-                            $("#regionDD").data("contrailDropdown").value(contrail.getCookie('region'));
+                            // if(loadUtils.getCookie('region') != "All Regions")
+                            $("#regionDD").data("contrailDropdown").value(loadUtils.getCookie('region'));
+                            if(globalObj['webServerInfo']['cgcEnabled'] == true) {
+                                //Fetch tokens for gohanUI
+                                $.ajax({
+                                    type: "POST",
+                                    url: '/gohan_contrail_auth/tokens'
+                                }).done(function(response,textStatus,xhr) {
+                                    var jsonObj = {};
+                                    jsonObj[loadUtils.getCookie('project')] = response;
+                                    sessionStorage.setItem('scopedToken',JSON.stringify(jsonObj));
+                                });
+                            }
+                            //Trigger change handler while setting default value
+                            if(loadUtils.getCookie('region') == "All Regions") {
+                                loadGohanUI();
+                            }
                         }
                     });
                     webServerInfoDefObj.resolve();
@@ -1119,11 +1171,13 @@ if (typeof document !== 'undefined' && document) {
                     }
                     $('#user-profile').show();
                     loadUtils.bindAppListeners();
+
                     $.when.apply(window,[menuXMLLoadDefObj,layoutHandlerLoadDefObj]).done(function(menuXML) {
                         if(globalObj['featureAppDefObj'] == null)
                             globalObj['featureAppDefObj'] = $.Deferred();
                         require(['core-bundle'],function() {
-                            layoutHandler.load(menuXML);
+                            if(loadUtils.getCookie('region') != "All Regions")
+                                layoutHandler.load(menuXML);
                         });
                     });
                 });
@@ -1145,7 +1199,7 @@ if (typeof document !== 'undefined' && document) {
                         $("#region_id").select2({placeholder: "Select the Region",
                                                 data: regionList,
                                                 width: "283px"})
-                        var cookieRegion = contrail.getCookie('region');
+                        var cookieRegion = loadUtils.getCookie('region');
                         if (regionList.length > 0) {
                             if (null == cookieRegion) {
                                 cookieRegion = regionList[0]['key'];
@@ -1193,7 +1247,11 @@ if (typeof document !== 'undefined' && document) {
                             globalObj['featureAppDefObj'] = $.Deferred();
                         if(webServerInfoDefObj == null) 
                             webServerInfoDefObj = $.Deferred();
-                        loadFeatureApps(featurePkgs);
+                        //Ensure the global aliases (like contrail,functions in web-utils) are available before loading
+                        //feature packages as they are used in the callback of feature init modules without requring them
+                        require(['nonamd-libs'],function() {
+                            loadFeatureApps(featurePkgs);
+                        });
                     });
                 });
             },
@@ -1246,6 +1304,8 @@ if (typeof document !== 'undefined' && document) {
                 });
             },
             logout: function() {
+                //Clear iframes
+                $('.iframe-view').remove();
                 //Clear All Pending Ajax calls
                 $.allajax.abort();
                 $.ajax({
@@ -1279,6 +1339,8 @@ if (typeof document !== 'undefined' && document) {
         //Check if the session is authenticated
         loadUtils.isAuthenticated();
         require(['jquery'],function() {
+            require(['core-bundle','nonamd-libs'],function() {
+            });
             menuXMLLoadDefObj = $.Deferred();
             layoutHandlerLoadDefObj = $.Deferred();
             if(webServerInfoDefObj == null) 
@@ -1309,24 +1371,26 @@ if (typeof document !== 'undefined' && document) {
             };
 
             //nonamd-libs   #no dependency on jquery
-            require(['core-bundle','jquery-dep-libs','nonamd-libs'],function() {
-                require(['validation','knockout','backbone'],function(validation,ko) {
-                    window.kbValidation = validation;
-                    // window.ko = ko;
-                });
-                require(['core-utils'],function(CoreUtils) {
-                    cowu = new CoreUtils();
-                    require(['underscore'],function(_) {
-                        _.noConflict();
+            require(['backbone','validation','knockout','knockback'],function() {
+                require(['core-bundle','jquery-dep-libs','nonamd-libs'],function() {
+                    require(['validation','knockout','backbone'],function(validation,ko) {
+                        window.kbValidation = validation;
+                        // window.ko = ko;
                     });
-                    require(['layout-handler','content-handler','contrail-load','lodash'],function(LayoutHandler,ContentHandler,ChartUtils,_) {
-                        window._ = _;
-                        contentHandler = new ContentHandler();
-                        initBackboneValidation();
-                        initCustomKOBindings(window.ko);
-                        initDomEvents();
-                        layoutHandler = new LayoutHandler();
-                        layoutHandlerLoadDefObj.resolve();
+                    require(['core-utils'],function(CoreUtils) {
+                        cowu = new CoreUtils();
+                        require(['underscore'],function(_) {
+                            _.noConflict();
+                        });
+                        require(['layout-handler','content-handler','contrail-load','lodash'],function(LayoutHandler,ContentHandler,ChartUtils,_) {
+                            window._ = _;
+                            contentHandler = new ContentHandler();
+                            initBackboneValidation();
+                            initCustomKOBindings(window.ko);
+                            initDomEvents();
+                            layoutHandler = new LayoutHandler();
+                            layoutHandlerLoadDefObj.resolve();
+                        });
                     });
                 });
             });

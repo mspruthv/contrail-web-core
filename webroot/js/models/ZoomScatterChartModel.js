@@ -122,7 +122,6 @@ define([
             //Round-off yMin/yMax to nearest 100
             /*self.yMin = self.yMin - (self.yMin%100)
             self.yMax = self.yMax + (100 - self.yMax%100)
-
             function decimalPlaces(num) {
             var match = (''+num).match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
             if (!match) { return 0; }
@@ -133,7 +132,6 @@ define([
                 // Adjust for scientific notation.
                 - (match[2] ? +match[2] : 0));
             }
-
             //Round-off xMin/xMax to 2 decimal
             if(d3.round(self.xMin,2) != d3.round(self.xMax,2)) {
                 self.xMin = Math.min(self.xMin,d3.round(self.xMin,2));
@@ -207,7 +205,7 @@ define([
                     return +d[fieldName];
                 });
 
-            if (axisMax == null) {
+            if (axisMax == null || axisMax === 0) {
                 axisMax = 1;
             }
 
@@ -386,13 +384,9 @@ define([
         var sizeMinMax = d3.extent(values, function (obj) {
             return  contrail.handleIfNaN(obj[sizeFieldName], 0)
         });
-        /**
-         * FIX FOR THE BUG https://bugs.launchpad.net/juniperopenstack/+bug/1597347 
-         */
-
+        
         if(chartConfig.bubbleDefMaxValue > 0){
             sizeMinMax[0] = 0;
-            //if sizeMinMax[1] < 10 GBPS sizeMinMax[1] = 10 GBPS
             if(sizeMinMax[1] <= chartConfig.bubbleDefMaxValue){
                 sizeMinMax[1] = chartConfig.bubbleDefMaxValue;
             }

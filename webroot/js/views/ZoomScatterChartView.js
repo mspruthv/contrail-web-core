@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
-
+ 
 define([
     'underscore',
     'contrail-view',
@@ -1357,7 +1357,6 @@ define([
             bubbleSizeFn: chartOptions['bubbleSizeFn'],
             defaultDataStatusMessage: true,
             statusMessageHandler: cowm.getRequestMessage,
-            //FIX FOR THE BUG https://bugs.launchpad.net/juniperopenstack/+bug/1597347 
             bubbleDefMaxValue: getValueByJsonPath(chartOptions,'bubbleCfg;defaultMaxValue', 0) 
         };
 

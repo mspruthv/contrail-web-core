@@ -65,6 +65,7 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
 
         'query-form-view'             : coreWebDir + '/js/views/QueryFormView',
         'contrail-vis-view'           : coreWebDir + '/js/views/ContrailVisView',
+        'contrail-config-model'       : coreWebDir + '/js/models/ContrailConfigModel',
 
         'query-form-model'            : coreWebDir + '/js/models/QueryFormModel',
         'query-or-model'              : coreWebDir + '/js/models/QueryOrModel',
@@ -72,15 +73,12 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
         'contrail-vis-model'          : coreWebDir + '/js/models/ContrailVisModel',
 
         'loginwindow-model'           : coreWebDir + '/js/models/LoginWindowModel',
-        'xml2json'                  : coreWebDir + '/assets/jquery/js/xml2json',
-
         'json-editor'                 : coreWebDir + '/assets/jsoneditor/js/jsoneditor.min',
         'ajv'                         : coreWebDir + '/assets/ajv/ajv.min',
         'server-schema'               : coreWebDir + '/schemas/server.schema',
         'cluster-schema'              : coreWebDir + '/schemas/cluster.schema',
         'json-model'                  : coreWebDir + "/js/models/JsonModel",
         'json-edit-view'              : coreWebDir + '/js/views/JsonEditView'
-
     };
 
     //Separate out aliases that need to be there for both prod & dev environments
@@ -187,6 +185,10 @@ function getCoreAppPaths(coreBaseDir, coreBuildDir, env) {
     } else if(env == "prod") {
         var prodAliasMap = {
             'controller-basedir'          : coreBaseDir,
+            'backbone'                    : coreWebDir + '/assets/backbone/backbone-min',
+            'knockout'                    : coreWebDir + '/assets/knockout/knockout-3.0.0',
+            'knockback'                   : coreWebDir + '/assets/backbone/knockback.min',
+            'validation'                  : coreWebDir + '/assets/backbone/backbone-validation-amd'
         }
         //Merge common (for both prod & dev) alias 
         for(var currAlias in prodAliasMap)
@@ -398,8 +400,6 @@ var coreBundles = {
             'sprintf',
             'ipv6',
             'xdate',
-            'knockback',
-            'validation',
         ],
         'jquery-dep-libs': [
             'jquery.xml2json',
@@ -443,9 +443,7 @@ var coreBundles = {
             'contrail-list-model',
             'lodash',
             'crossfilter',
-            'backbone',
             'text',
-            'knockout',
             'moment',
             'layout-handler',
             'menu-handler',
@@ -509,6 +507,20 @@ var coreBundles = {
             'core-basedir/js/views/SparklineView',
             'core-basedir/js/views/TabsView',
             'core-basedir/js/views/WizardView'
+        ],
+        'nonamd-libs': [
+            'web-utils',
+            'analyzer-utils',
+            'config_global',
+            'contrail-layout',
+            'handlebars-utils',
+            'contrail-common',
+            'uuid',
+            'protocol',
+            'xdate',
+            'ipv6',
+            'handlebars',
+            'jsonpath'
         ]
     };
 
@@ -520,7 +532,6 @@ function initBackboneValidation() {
                 /*
                 var $el = $(view.modalElementId).find('[name=' + attr + ']'),
                 $group = $el.closest('.form-element');
-
                 $group.removeClass('has-error');
                 $group.find('.help-block').html('').addClass('hidden');
                 */
