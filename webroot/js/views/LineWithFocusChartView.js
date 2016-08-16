@@ -52,14 +52,16 @@ define([
                 widgetConfig = contrail.checkIfExist(viewConfig.widgetConfig) ? viewConfig.widgetConfig : null,
                 chartViewConfig, chartOptions, chartModel,
                 showLegend = getValueByJsonPath(viewConfig,'chartOptions;showLegend',false),
-                legendFn = getValueByJsonPath(viewConfig,'chartOptions;legendFn',null);
+                legendFn = getValueByJsonPath(viewConfig,'chartOptions;legendFn',null),
+                defaultZeroLineDisplay = getValueByJsonPath(viewConfig,'chartOptions;defaultZeroLineDisplay', false);
 
             if (contrail.checkIfFunction(viewConfig['parseFn'])) {
                 data = viewConfig['parseFn'](data);
             }
 
-            if(data.length === 0){
-                var defData = {key:'', color:'#adcfdc', values:[]},
+            //plot default line
+            if(data.length === 0 && defaultZeroLineDisplay){
+                var defData = {key:'', color:cowc.DEFAULT_NODE_COLOR, values:[]},
                     start = Date.now() - (2 * 60 * 60 * 1000),
                     end = Date.now();
 

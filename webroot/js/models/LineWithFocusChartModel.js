@@ -76,10 +76,10 @@ define([
         var margin = chartOptions.margin
             , margin2 = chartOptions.margin2
             , color = nv.utils.defaultColor()
-            , hideFocusEnable = getValueByJsonPath(chartOptions,'hideFocusEnable', false)
+            , hideFocusChart = getValueByJsonPath(chartOptions,'hideFocusChart', false)
             , width = null
             , height = null
-            , height2 = (!hideFocusEnable ? 90 : 0)
+            , height2 = (!hideFocusChart ? 90 : 0)
             , useInteractiveGuideline = false
             , xScale
             , yScale
@@ -138,6 +138,7 @@ define([
                     data = chartDataObj.data,
                     requestState = chartDataObj.requestState,
                     tickPadding = getValueByJsonPath(chartOptions, 'tickPadding', 0),
+                    yTickFormat = getValueByJsonPath(chartOptions, 'yTickFormat', null),
                     yDataKey = contrail.checkIfExist(chartOptions.chartAxesOptionKey) ? chartOptions.chartAxesOptionKey : 'y';
 
                 nv.utils.initSVG(container);
@@ -301,7 +302,7 @@ define([
                 var brushBG = g.select('.nv-brushBackground').selectAll('g')
                     .data([brushExtent || brush.extent()])
 
-                if(!hideFocusEnable){
+                if(!hideFocusChart){
                     var brushBGenter = brushBG.enter()
                         .append('g');
 
@@ -349,7 +350,7 @@ define([
                 g.select('.nv-context .nv-x.nv-axis')
                     .attr('transform', 'translate(0,' + y2.range()[0] + ')');
 
-                g.select('.nv-context').style('display', (!hideFocusEnable 
+                g.select('.nv-context').style('display', (!hideFocusChart 
                     && requestState === cowc.DATA_REQUEST_STATE_SUCCESS_NOT_EMPTY) ? 'initial' : 'none');
 
                 //============================================================
@@ -410,7 +411,7 @@ define([
                             .position({left: e.mouseX + margin.left, top: e.mouseY + margin.top})
                             .chartContainer(that.parentNode)
                             .valueFormatter(function (d, i) {
-                                return d == null ? "N/A" : yAxis.tickFormat()(d3.format('.2f')(d));
+                                return d == null ? "N/A" : yAxis.tickFormat()(yTickFormat === null ? d : yTickFormat(d));
                             })
                             .data({
                                 value: xValue,
@@ -703,11 +704,11 @@ define([
                     }
                 }
             },
-            hideFocusEnable: {
+            hideFocusChart: {
                 get: function(){
-                    return hideFocusEnable;
+                    return hideFocusChart;
                 }, set: function(_){
-                    hideFocusEnable=_;
+                    hideFocusChart=_;
                 }
             }
         });
@@ -725,9 +726,11 @@ define([
 
         chartModel.interpolate(chUtils.interpolateSankey);
 
-        chartModel.xAxis.tickFormat(chartOptions['xFormatter']).showMaxMin(chartOptions['showXAxisMaxMin']);
+        chartModel.xAxis.axisLabel(chartOptions.xAxisLabel)
+                    .tickFormat(chartOptions['xFormatter'])
+                    .showMaxMin(chartOptions['showXAxisMaxMin']);
 
-        chartModel.x2Axis.axisLabel("Time").tickFormat(chartOptions['x2Formatter']);
+        chartModel.x2Axis.axisLabel(chartOptions.xAxisLabel).tickFormat(chartOptions['x2Formatter']);
 
         chartModel.yAxis.axisLabel(chartOptions.yAxisLabel)
                         .axisLabelDistance(chartOptions.axisLabelDistance)
