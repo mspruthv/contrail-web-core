@@ -205,4 +205,3 @@ define([
 
     return rbacPermissionsView;
 });
-
