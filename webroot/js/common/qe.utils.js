@@ -113,9 +113,9 @@ define([
                 texareaNames = ['select', 'where', 'filters'];
 
             $.each(texareaNames, function(nameKey, nameValue) {
+                var scrollHeight = $(elId).find('[name="' + nameValue + '"]').get(0).scrollHeight;
                 $(elId).find('[name="' + nameValue + '"]')
-                    .height(0)
-                    .height($(elId).find('[name="' + nameValue + '"]').get(0).scrollHeight - 5);
+                    .outerHeight(((scrollHeight < 26) ? 26 : (scrollHeight)));
             });
         };
 
@@ -393,6 +393,20 @@ define([
             });
 
             return nameSuffixKey;
+        };
+
+        //format aggregate field names for grids
+        self.formatNameForGrid = function(columnName) {
+            var firstIndex = columnName.indexOf('('),
+                lastIndex = columnName.indexOf(')'),
+                aggregateType = columnName.substr(0,firstIndex),
+                aggregateColumnName = columnName.substr(firstIndex + 1,lastIndex - firstIndex - 1);
+
+            if(qewu.isAggregateField(columnName) || aggregateType == "AVG" || aggregateType == "PERCENTILES") {
+                return aggregateType.toUpperCase() + " (" + cowl.get(aggregateColumnName) + ")";
+            } else {
+                return cowl.get(columnName).replace(')', '');
+            }
         };
 
         self.isAggregateField = function(fieldName) {
