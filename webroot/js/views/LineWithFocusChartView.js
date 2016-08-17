@@ -186,12 +186,12 @@ define([
             spliceBorderPoints(chartData);
             var values = chartData[0].values,
                 brushExtent = null,
-                hideFocusEnable = getValueByJsonPath(chartOptions,'hideFocusEnable', false),
+                hideFocusChart = getValueByJsonPath(chartOptions,'hideFocusChart', false),
                 start, end;
             end = values[values.length - 1];
             if (values.length >= 20) {
                 start = values[values.length - 20];
-                if(!hideFocusEnable){
+                if(!hideFocusChart){
                     chartOptions['brushExtent'] = [chUtils.getViewFinderPoint(start.x), 
                         chUtils.getViewFinderPoint(end.x)];
                 }
@@ -199,7 +199,7 @@ define([
                   values.length >= parseInt(chartOptions['defaultSelRange'])) {
                 var selectionRange = parseInt(chartOptions['defaultSelRange']);
                 start = values[values.length - selectionRange];
-                if(!hideFocusEnable){
+                if(!hideFocusChart){
                     chartOptions['brushExtent'] = [chUtils.getViewFinderPoint(start.x), 
                         chUtils.getViewFinderPoint(end.x)];
                 } 
