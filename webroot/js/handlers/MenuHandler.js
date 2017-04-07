@@ -4,7 +4,7 @@
 
 define(['underscore'], function (_) {
     var MenuHandler = function () {
-        var self = this, menuObj, menuXML,
+        var self = this, menuObj,
             initMenuDefObj = $.Deferred();  //Will be resolved once menu is loaded and filtered
         //onHashChange is triggered once it is resolved
         self.deferredObj = $.Deferred();
@@ -14,11 +14,8 @@ define(['underscore'], function (_) {
             'webStorage': 'ws',
             'serverManager': 'sm'
         };
-        this.reloadMenu = function() {
-           this.loadMenu(menuXML, {reload: true});
-        }
-        this.loadMenu = function (xml, cfg) {
-            menuXML = xml;
+
+        this.loadMenu = function (xml) {
             menuObj = $.xml2json(xml);
             var optFeatureList =
                 getValueByJsonPath(globalObj, 'webServerInfo;optFeatureList',
@@ -30,9 +27,7 @@ define(['underscore'], function (_) {
             globalObj['siteMapSearchStrings'] = [];
             processXMLJSON(menuObj, optFeatureList);
             //populate the autocomplete dropdown for siteMap
-            if(cfg != null && cfg['reload'] != true) {
-                enableSearchAhead();
-            }
+            enableSearchAhead();
             var menuShortcuts = contrail.getTemplate4Id('menu-shortcuts')(menuHandler.filterMenuItems(menuObj['items']['item'], 'menushortcut', featurePkgsInfo));
             //Load top-level menu buttons (Configure,Monitor,Settings,Query)
             $("#sidebar-shortcuts").html(menuShortcuts);
@@ -47,6 +42,12 @@ define(['underscore'], function (_) {
                 }
             });
 
+            //Intialize the alarm flag
+            var isMonAlarmsEnabled =
+                getValueByJsonPath(optFeatureList, 'mon_alarms', true);
+            if (false == isMonAlarmsEnabled) {
+                cowu.getAlarmsFromAnalytics = false;
+            }
         }
 
         //Filter the menu items based
@@ -112,7 +113,7 @@ define(['underscore'], function (_) {
          * and returns true if permitted else false
          */
         function checkForAccess(value) {
-            var roleExists = false, orchExists = false, accessFnRetVal = false, allRegion=false;
+            var roleExists = false, orchExists = false, accessFnRetVal = false;
             var orchModel = globalObj['webServerInfo']['loggedInOrchestrationMode'];
             var loggedInUserRoles = globalObj['webServerInfo']['role'];
             if (value.access != null) {
@@ -155,21 +156,13 @@ define(['underscore'], function (_) {
                     }
                 } else
                     orchExists = true;
-                    if(rolesArr !== undefined && loadUtils.getCookie('region') !== 'All Regions'){
-                        for (var j = 0; j < rolesArr.length; j++) {
-                            if (rolesArr[j] === "globalController") {
-                                allRegion = true;
-                                break;
-                            }
-                        }
-                    }
-                    return (roleExists && orchExists && accessFnRetVal && !allRegion);
+                return (roleExists && orchExists && accessFnRetVal);
             } else {
                 return true;
             }
         }
 
-        this.toggleMenuButton = function (menuButton, currPageHash, lastPageHash, cfg) {
+        this.toggleMenuButton = function (menuButton, currPageHash, lastPageHash) {
             var currentBCTemplate = contrail.getTemplate4Id('current-breadcrumb');
             var currPageHashArray, subMenuId, reloadMenu, linkId;
             var hostname = window.location.hostname;
@@ -184,11 +177,6 @@ define(['underscore'], function (_) {
                 menuButton = getMenuButtonName(currPageHashArray[0]);
                 //If user has switched between top-level menu
                 reloadMenu = check2ReloadMenu(lastPageHash, currPageHashArray[0]);
-                if(cfg != null && cfg['reload'] == true) {
-                         reloadMenu = true;
-                } else {
-                    reloadMenu = check2ReloadMenu(lastPageHash, currPageHashArray[0]);
-                }
             }
             if (reloadMenu == null || reloadMenu) {
                 var menu = {};
@@ -222,29 +210,212 @@ define(['underscore'], function (_) {
                     href: $(linkId + ' a:first').attr('href').trim(),
                     link: $(linkId + ' a:first').text().trim()
                 }];
+
+                var ddData = [{mId: 'menuL0', mData: [], mSelData: '', isL1menu: true}, 
+                              {mId: 'menuL1', mData: [], mSelData: '', isL1menu: false}, 
+                              {mId: 'menuL2', mData: [], mSelData: '', isL1menu: false}],
+                    tags,
+                    breadcrumbElement = $('#' + cowl.BREADCRUMB_ID);
+
+                for(var i = 0; i < menuObj['items']['item'].length; i ++){
+                    ddData[0].mData.push({name:menuObj['items']['item'][i].label, value:menuObj['items']['item'][i].name})
+                }
                 if ($(linkId).parents('ul').length == 2) {
                     breadcrumbsArr.unshift({
                         href: $(linkId).parents('li').children('a:first').attr('data-link').trim(),
                         link: $(linkId).parents('li').children('a:first').text().trim()
                     });
+                    ddData[1].mSelData = $(linkId).parents('li').children('a:first').text().trim();
+                    tags = $(linkId).parents('ul.nav').children('li.item');
+                    for(var i = 0; i < tags.length; i ++){
+                        ddData[1].mData.push({'value': $(tags[i]).children('a:first')[0].href.trim(), 
+                            'name': $(tags[i]).children('a:first')[0].text.trim()});
+                    }
                     breadcrumbsArr.unshift({
                         href: $(linkId).parents('li').parents('ul').children('li:first').children('a:first').attr('data-link').trim(),
                         link: $(linkId).parents('li').parents('ul').children('li:first').children('a:first').text().trim()
                     });
+                    ddData[0].mSelData = $(linkId).parents('li').parents('ul').children('li:first').children('a:first').text().trim();
+                    tags = $(linkId + ' a').parents('ul:first').children();
+                    for(var i = 0; i < tags.length; i ++){ 
+                        ddData[2].mData.push({'value': $(tags[i]).children('a:first')[0].href.trim(), 
+                            'name': $(tags[i]).children('a:first')[0].text.trim()});
+                    }
+                    ddData[2].mSelData = $(linkId + ' a:first').text().trim();
                 } else if ($(linkId).parents('ul').length == 1){
                     breadcrumbsArr.unshift({
                         href: $(linkId).parents('ul').children('li:first').children('a:first').attr('data-link').trim(),
                         link: $(linkId).parents('ul').children('li:first').children('a:first').text().trim()
                     });
+                    ddData[0].mSelData = $(linkId).parents('ul').children('li:first').children('a:first').text().trim();
+                    tags = $(linkId).parents('ul.nav').children('li.item');
+                    for(var i = 0; i < tags.length; i ++){
+                        ddData[1].mData.push({'value': $(tags[i]).children('a:first')[0].href.trim(), 
+                            'name': $(tags[i]).children('a:first')[0].text.trim()});
+                    }
+                    ddData[1].mSelData = $(linkId + ' a:first').text().trim();
+                    ddData.pop();
                 } else {
                     breadcrumbsArr.unshift({
                         href: $(linkId).parents('li').parents('ul').children('li:first').children('a:first').attr('data-link').trim(),
                         link: $(linkId).parents('li').parents('ul').children('li:first').children('a:first').text().trim()
                     });
+                    menuL1SelTxt = $(linkId).parents('li').parents('ul').children('li:first').children('a:first').text().trim();
                 }
-                $('#breadcrumb').html(currentBCTemplate(breadcrumbsArr));
-                //}
+
+                breadcrumbElement.html(currentBCTemplate(breadcrumbsArr));
+                if(!menu){
+                    var tmpName = breadcrumbsArr[0].link.toLowerCase(),
+                        l2MenuItem;
+                    for (var i = 0; i < menuObj['items']['item'].length; i++) {
+                        if (menuObj['items']['item'][i]['name'] == tmpName){
+                            menu = menuObj['items']['item'][i];
+                            break;
+                        }
+                    }
+                    tmpName = breadcrumbsArr[1].link.toLowerCase();
+                    for (var i = 0; i < menu['items']['item'].length; i++) {
+                        if (menu['items']['item'][i]['label'].toLowerCase() == tmpName){
+                            l2MenuItem = menu['items']['item'][i];
+                            break;
+                        }
+                    }
+                }else{
+                    tmpName = breadcrumbsArr[1].link.toLowerCase();
+                    for (var i = 0; i < menu['items']['item'].length; i++) {
+                        if (menu['items']['item'][i]['label'].toLowerCase() == tmpName){
+                            l2MenuItem = menu['items']['item'][i];
+                            break;
+                        }
+                    }
+                }
+
+                $.expr[":"].containsNoCase = function(el, i, m) {
+                    var search = m[3];
+                    if (!search) return false;
+
+                    var pattern = new RegExp(search,"i");
+                    return pattern.test($(el).text());
+                };
+                $.expr[":"].notContainsNoCase = function(el, i, m) {
+                    var search = m[3];
+                    if (!search) return false;
+
+                    var pattern = new RegExp(search,"i");
+                    return !pattern.test($(el).text());
+                };
+                $.expr[":"].matchCase = function(el, i, m) {
+                    return m[3].toLowerCase() ===  ($(el).text().toLowerCase());
+                };
+
+                var fhCobj = {},
+                    shCobj = {}, 
+                    divideObj = function(){
+                        for(var key in menuObj.items.item[1]){
+                            if(toString.call(menuObj.items.item[1][key]) != '[object Object]'){
+                                fhCobj[key] = menuObj.items.item[1][key];
+                                shCobj[key] = menuObj.items.item[1][key];
+                            }
+                        }
+                        fhCobj['items'] = {item:[]};
+                        shCobj['items'] = {item:[]};
+                        menuObj.items.item[1].items.item.forEach(function(val, idx){
+                            if(idx < 2 || idx > 3){
+                                fhCobj.items.item.push(val);
+                            }else{
+                                shCobj.items.item.push(val);
+                            }
+                        });
+                    }();
+                menuObj.items.item.splice(2,0,fhCobj);
+                menuObj.items.item.splice(3,0,shCobj);
+
+                var l0Menu = $('#drop-down-l0-menu-area div:last'),
+                    l1Menu = $('#drop-down-l1-menu-area'),
+                    l2Menu = $('#drop-down-l2-menu-area');
+                l0Menu.html('');
+                l0Menu.html(contrail.getTemplate4Id('l0menu-template')(menuObj));
+                menuObj.items.item.splice(2,2);
+                l1Menu.html('');
+                l1Menu.html(contrail.getTemplate4Id('l1menu-template')(menu));
+                var l1Dom = $('#drop-down-l0-menu-area').find('.l1menu-header:matchCase("'+breadcrumbsArr[0].link+'")'),
+                    l2Dom = l1Dom.parent().find('div').find('.l2menu-header:matchCase("'+breadcrumbsArr[1].link+'")'),
+                    l2DDDom = $('#drop-down-l1-menu-area').find('.l2menu-header:matchCase("'+breadcrumbsArr[1].link+'")');
+
+                if(breadcrumbsArr.length === 2){
+                    l2Dom.addClass("breadcrumb-menu-highlight");
+                    l2DDDom.addClass("breadcrumb-menu-highlight");
+                }
+
+                if(breadcrumbsArr.length === 3){
+                    l2Menu.html('');
+                    l2Menu.html(contrail.getTemplate4Id('l2menu-template')(l2MenuItem));
+                    l2Dom.parent().parent().children().find('.l3menu-header:matchCase("'+breadcrumbsArr[2].link+'")').addClass("breadcrumb-menu-highlight");
+                    l2DDDom.parent().parent().children().find('.l3menu-header:matchCase("'+breadcrumbsArr[2].link+'")').addClass("breadcrumb-menu-highlight");
+                    $('#drop-down-l2-menu-area').children().find('.l3menu-header:matchCase("'+breadcrumbsArr[2].link+'")').addClass("breadcrumb-menu-highlight");
+                }
+                //breadcrumbElement.html('');
+                //menuHandler.constructBreadcrumDD(breadcrumbElement, ddData);
+
+                $('#drop-down-l0-menu-area #nav-search-input').on('input propertychange paste',function(e){
+                    var searchVal = $(this).val();
+                    if(searchVal.length === 0)
+                        searchVal = '@@@@@@';
+                    $('#drop-down-l0-menu-area .item').find('div:has(:containsNoCase("'+searchVal+'"))').addClass("breadcrumb-menu-highlight-search");
+                    $('#drop-down-l0-menu-area .item').find('div:has(:notContainsNoCase("'+searchVal+'"))').removeClass("breadcrumb-menu-highlight-search");
+                });
+
+                /*$('#drop-down-l0-menu-area div:first').on( 'wheel  mousewheel DOMMouseScroll', function (e) { 
+                    var d = e.originalEvent.wheelDelta || -e.originalEvent.detail,
+                    dir = d > 0 ? 'up' : 'down',
+                    stop = (dir == 'up' && this.scrollTop == 0) || 
+                           (dir == 'down' && this.scrollTop == this.scrollHeight-this.offsetHeight);
+                    stop && e.preventDefault();
+                });*/
             }
+        }
+
+        this.constructBreadcrumDD = function(breadcrumbElement, ddData){
+            var dLen = ddData.length,
+                dIdx = 0,
+                menuId = '';
+            for(dIdx = 0; dIdx < dLen; dIdx ++){
+                menuId = ddData[dIdx].mId;
+                breadcrumbElement.append('<li class="breadcrumb-item"><div id="'
+                        + menuId + '" class="breadcrumb-dropdown"></div></li>');
+                (function(isL1menu){
+                    $('#'+menuId).contrailDropdown({
+                        dataTextField: "name",
+                        dataValueField: "value",
+                        data: ddData[dIdx].mData,
+                        dropdownCssClass: 'min-width-150',
+                        selecting: function (e){
+                           if(e.currentTarget.value != e.object['value']){
+                                if(isL1menu)
+                                    menuHandler.toggleMenuButton(e.object['value']);
+                                 else
+                                    loadFeature(cowhu.deparam.fragment(e.object['value']));
+                            }
+                        },
+                        open: function (){
+                            console.log(this);
+                        }
+                    });
+                })(ddData[dIdx].isL1menu);
+                $('#'+menuId).data('contrailDropdown').text(ddData[dIdx].mSelData);
+            }
+            breadcrumbElement.children('li:last').addClass('active');
+        }
+
+        this.getFilteredmenu = function(items, key){
+            var filteredMenu = items.filter(function(value){
+                if(value['label'] == key){
+                    return value['items']['item'];
+                }else if (value['items'] != null && value['items']['item'] instanceof Array){
+                    menuHandler.filterMenuItems(value['items']['item']);
+                }
+            });
+            return filteredMenu;
         }
 
         this.selectMenuButton = function (buttonId) {
@@ -470,7 +641,6 @@ define(['underscore'], function (_) {
             $(linkId).addClass('active');
         }
     };
-
     return MenuHandler;
 });
 
